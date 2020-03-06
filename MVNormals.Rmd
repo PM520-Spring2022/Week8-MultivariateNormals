@@ -1,0 +1,147 @@
+---
+title: "MVNormals"
+author: "Paul M"
+date: "3/6/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This is a relatvely straightforeward MCMC example based on the following http://www.people.fas.harvard.edu/~plam/teaching/methods/convergence/convergence_print.pdf
+
+It assumes we have some bivariate normal data for which we want to estimate the means.
+For convenience, for the purposes of this example, we will assume we know the variance-covariance structure.
+We will also assume an (improper) uniform prior for the means.
+
+First, load some libraries and do some other book-keeping:
+```{r prep}
+library(mvtnorm)
+library(mcmc)
+library(coda)
+set.seed(111)
+
+# how many iterations do we want in our MH-MCMC process?
+total.iterations<-20000
+
+op<-par() # preserve your current graphics parameter settings
+```
+
+Now we generate some test data and plot it. Try running each of the three bivariate cases below
+```{r data}
+mu.vector <- c(3, 1)    # the vector of means for the multi-variate normal
+
+# Here are three different bivariate normals to try to work with:
+variance.matrix <- cbind(c(1, 0), c(0, 4))   # the variance-covariance matrix for the multi-variate normal
+#variance.matrix <- cbind(c(1, 1.5), c(1.5, 4))
+#variance.matrix <- cbind(c(1, 1.99), c(1.99, 4))
+
+# Now generate one hundred samples from that distribution:
+our.data<-rmvnorm(n=100,mean=mu.vector,sigma=variance.matrix)
+plot(our.data,main="sampled data")
+```
+
+Now we define our MCMM function:
+```{r mcmc_def}
+do.MHMCMC<-function(number.of.iterations){
+  # start our MH-MCMC process off from somewhere
+  current.mu<-runif(2,0,4)
+  
+  # define a vector to store the output of the MH-MCMC process
+  posterior.mu<-mat.or.vec(number.of.iterations,2)
+  
+  for (i in 1:number.of.iterations){
+    #apply the proposal/transition-kernel to the current state to get the proposed new state
+    proposed.mu<-current.mu+runif(2,-1,1)
+
+    # calculate hastings ratio
+    # first we need the density of the data under the new and old values for the mean - note that we work with logs!
+    pdf.before<-sum(log(dmvnorm(our.data,mean=current.mu,sigma=variance.matrix)))
+    pdf.after<-sum(log(dmvnorm(our.data,mean=proposed.mu,sigma=variance.matrix)))
+    # our proposal kernel is symmetric, and uses uniform priors, so the Hastings ratio will be as follows:
+    hr<-exp(pdf.after-pdf.before)
+    
+    # do we accept the transition?
+    p<-runif(1)
+    #browser()
+    if (p<hr){
+      # accept
+      current.mu<-proposed.mu
+    }else{
+      #reject - no need to do anything here
+    }
+    
+    # store the current iteration
+    posterior.mu[i,]<-current.mu  
+  }
+  
+  return (posterior.mu)
+  
+}
+```
+
+Let's run it three times to enable comparison of results
+```{r runs}
+mh.draws1 <- do.MHMCMC(total.iterations)
+mh.draws2 <- do.MHMCMC(total.iterations)
+mh.draws3 <- do.MHMCMC(total.iterations)
+```
+
+Turn it into an mcmc object so that we can use the coda package
+```{r transform}
+mh.draws1 <- mcmc(mh.draws1) # turn into an MCMC object
+print(summary(mh.draws1))
+cat("\nRejection rate: ",rejectionRate(mh.draws1))
+autocorr.plot(mh.draws1,lag=100,main="Autocorrelation for mh.draws1")
+```
+
+Compare multiple chains by combining them into what is known as an mcmc.list (a collection of mcmc outputs)
+```{r moreruns}
+mh.draws2 <- mcmc(mh.draws2) # turn into an MCMC object
+mh.draws3 <- mcmc(mh.draws3) # turn into an MCMC object
+
+mh.list <- mcmc.list(list(mh.draws1, mh.draws2, mh.draws3))
+```
+
+
+Now run the gelman convergence test:
+```{r Gelman}
+cat("\nGelman test results follow...")
+print(gelman.diag(mh.list))
+gelman.plot(mh.list,main="Gelman plots")
+# look at the output
+plot(mh.draws1,main="Results for mh.draws1")
+plot(mh.draws2,main="Result for mh.draws2")
+acf(mh.draws2,main="Autocorrelation for mh.draws2")
+#plot(as.matrix(mh.draws1))
+#plot(mh.draws1[,1])
+```
+
+
+What were the means of our test data and what did we get for 
+each of our posteriors? Let's throw away the first 100 
+values as "burn-in".
+
+```{r results}
+cat("\n Test data means:",mean(our.data[,1]),mean(our.data[,2]))
+summary(mh.draws1[-(1:100),])
+summary(mh.draws2[-(1:100),])
+summary(mh.draws3[-(1:100),])
+```
+
+What were the gelman diagnostics?:
+```{r plots}
+gelman.diag(mh.list)
+# return graphics parameters to normal
+par(op)
+```
+
+
+Now repeat for the other two bivariate normals:
+variance.matrix <- cbind(c(1, 1.5), c(1.5, 4))
+variance.matrix <- cbind(c(1, 1.99), c(1.99, 4))
+
+And see how the performance depends upon the covariance. 
+Can you do anything to make it better when the covariance is high?
+
