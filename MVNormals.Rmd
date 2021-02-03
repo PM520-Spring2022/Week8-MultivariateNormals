@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This is a relatvely straightforeward MCMC example based on the following http://www.people.fas.harvard.edu/~plam/teaching/methods/convergence/convergence_print.pdf
+This is a relatively straightforward MCMC example based on the following http://www.people.fas.harvard.edu/~plam/teaching/methods/convergence/convergence_print.pdf
 
 It assumes we have some bivariate normal data for which we want to estimate the means.
 For convenience, for the purposes of this example, we will assume we know the variance-covariance structure.
