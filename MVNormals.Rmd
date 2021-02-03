@@ -42,7 +42,7 @@ our.data<-rmvnorm(n=100,mean=mu.vector,sigma=variance.matrix)
 plot(our.data,main="sampled data")
 ```
 
-Now we define our MCMM function:
+Now we define our MCMC function:
 ```{r mcmc_def}
 do.MHMCMC<-function(number.of.iterations){
   # start our MH-MCMC process off from somewhere
