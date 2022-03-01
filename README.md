@@ -1,4 +1,4 @@
-# Week7-MultivariateNormals
+# Week8-MultivariateNormals
 
 The Rmd file in this repo contains the code the the example in which we run an 
 MCMC process to estimate the means of a bivariate normal.
